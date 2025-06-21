@@ -1,15 +1,15 @@
-# GenAI Wealth Advisor Full App WITHOUT Firebase (Updated OpenAI SDK)
+# GenAI Wealth Advisor Full App WITHOUT Firebase (Updated OpenAI Legacy SDK)
 
 import streamlit as st
 import plotly.express as px
-from openai import OpenAI
+import openai
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
 # ========== OpenAI API ==========
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+openai.api_key = st.secrets["openai_api_key"]
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -34,14 +34,14 @@ def explain_portfolio(allocation, age, risk, goal):
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-    response = client.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
             {"role": "user", "content": prompt}
         ]
     )
-    return response.choices[0].message.content
+    return response["choices"][0]["message"]["content"]
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -143,12 +143,11 @@ if st.button("🔍 Generate Portfolio"):
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-        response = client.chat.completions.create(
-    model="gpt-3.5-turbo",  # or "gpt-4" if you're sure you have access
-    messages=[
-        {"role": "system", "content": "You are a helpful and expert financial advisor."},
-        {"role": "user", "content": prompt}
-    ]
-)
-
-        st.write(response.choices[0].message.content)
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a financial advisor."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        st.write(response["choices"][0]["message"]["content"])
