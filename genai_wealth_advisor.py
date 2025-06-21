@@ -1,4 +1,4 @@
-# GenAI Wealth Advisor Full App with Firebase Admin, GPT, SIP, and PDF Export
+# GenAI Wealth Advisor Full App with Firebase Admin (Secure Secrets), GPT, SIP, and PDF Export
 
 import streamlit as st
 import plotly.express as px
@@ -9,14 +9,18 @@ import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
+import json
+import os
 
-# ========== Firebase Admin Init ==========
-cred = credentials.Certificate("serviceAccountKey.json")  # Upload this JSON in root directory
-firebase_admin.initialize_app(cred)
+# ========== Firebase Admin Init with Secrets ==========
+# Store your JSON key in Streamlit secrets as firebase_key (dict)
+if not firebase_admin._apps:
+    cred = credentials.Certificate(st.secrets["firebase_key"])
+    firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # ========== OpenAI API ==========
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = st.secrets["openai_api_key"]
 
 # ========== Demo Login Simulation ==========
 def login_section():
