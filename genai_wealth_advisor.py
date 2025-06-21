@@ -1,23 +1,12 @@
-# GenAI Wealth Advisor Full App with Firebase Admin (Secure Secrets), GPT, SIP, and PDF Export
+# GenAI Wealth Advisor Full App WITHOUT Firebase
 
 import streamlit as st
 import plotly.express as px
 import openai
-import firebase_admin
-from firebase_admin import credentials, firestore
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
-import json
-import os
-
-# ========== Firebase Admin Init with Secrets ==========
-# Store your JSON key in Streamlit secrets as firebase_key (dict)
-if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["firebase_key"])
-    firebase_admin.initialize_app(cred)
-db = firestore.client()
 
 # ========== OpenAI API ==========
 openai.api_key = st.secrets["openai_api_key"]
@@ -72,17 +61,6 @@ def fetch_cagr(ticker, years=5):
     end_price = data["Adj Close"].iloc[-1]
     cagr = ((end_price / start_price) ** (1 / years)) - 1
     return round(cagr * 100, 2)
-
-# ========== Firebase Save ==========
-def save_to_firebase(user_email, profile, allocation, explanation, sip_info):
-    doc_data = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "profile": profile,
-        "allocation": allocation,
-        "explanation": explanation,
-        "sip_info": sip_info
-    }
-    db.collection("users").document(user_email).collection("sessions").add(doc_data)
 
 # ========== PDF Export ==========
 def generate_pdf(name, age, income, risk, goal, allocation, explanation, sip_info=None):
@@ -156,14 +134,8 @@ if st.button("🔍 Generate Portfolio"):
     }
     st.dataframe(pd.DataFrame({"Asset": returns.keys(), "CAGR (%)": returns.values()}))
 
-    # Save to Firebase
-    profile = {"age": age, "income": income, "risk": risk_tolerance, "goal": goal}
-    user_email = st.session_state['user']['email']
-    sip_info = {"amount": goal_amount, "years": goal_years, "sip": sip}
-    save_to_firebase(user_email, profile, allocation, explanation, sip_info)
-
     if st.button("📄 Generate PDF Report"):
-        generate_pdf("User", age, income, risk_tolerance, goal, allocation, explanation, sip_info)
+        generate_pdf("User", age, income, risk_tolerance, goal, allocation, explanation, {"amount": goal_amount, "years": goal_years, "sip": sip})
         st.download_button("📥 Download PDF", open("/mnt/data/wealth_report.pdf", "rb"), "Wealth_Report.pdf")
 
     # LLM Q&A
