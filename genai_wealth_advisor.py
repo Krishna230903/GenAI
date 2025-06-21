@@ -144,10 +144,11 @@ if st.button("🔍 Generate Portfolio"):
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
         response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are a financial advisor."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+    model="gpt-3.5-turbo",  # or "gpt-4" if you're sure you have access
+    messages=[
+        {"role": "system", "content": "You are a helpful and expert financial advisor."},
+        {"role": "user", "content": prompt}
+    ]
+)
+
         st.write(response.choices[0].message.content)
