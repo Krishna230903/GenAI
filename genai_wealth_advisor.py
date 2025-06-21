@@ -1,50 +1,30 @@
-# GenAI Wealth Advisor Full App with Firebase, GPT, SIP, and PDF Export
+# GenAI Wealth Advisor Full App with Firebase Admin, GPT, SIP, and PDF Export
 
 import streamlit as st
 import plotly.express as px
 import openai
-import pyrebase
+import firebase_admin
+from firebase_admin import credentials, firestore
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
-# ========== Firebase Config ==========
-firebaseConfig = {
-    "apiKey": "YOUR_API_KEY",
-    "authDomain": "yourapp.firebaseapp.com",
-    "projectId": "yourapp",
-    "storageBucket": "yourapp.appspot.com",
-    "messagingSenderId": "SENDER_ID",
-    "appId": "APP_ID",
-    "databaseURL": ""
-}
-
-firebase = pyrebase.initialize_app(firebaseConfig)
-auth = firebase.auth()
-db = firebase.database()
+# ========== Firebase Admin Init ==========
+cred = credentials.Certificate("serviceAccountKey.json")  # Upload this JSON in root directory
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 # ========== OpenAI API ==========
 openai.api_key = "YOUR_OPENAI_API_KEY"
 
-# ========== Authentication ==========
+# ========== Demo Login Simulation ==========
 def login_section():
-    st.sidebar.subheader("🔐 User Login")
-    email = st.sidebar.text_input("Email")
-    password = st.sidebar.text_input("Password", type="password")
-    action = st.sidebar.radio("Action", ["Login", "Sign Up"])
-
-    if st.sidebar.button("Submit"):
-        try:
-            if action == "Sign Up":
-                user = auth.create_user_with_email_and_password(email, password)
-                st.success("🎉 Account created!")
-            else:
-                user = auth.sign_in_with_email_and_password(email, password)
-                st.session_state['user'] = user
-                st.success("✅ Logged in!")
-        except:
-            st.error("❌ Authentication failed")
+    st.sidebar.subheader("🔐 Simulated Login")
+    email = st.sidebar.text_input("Enter your email")
+    if st.sidebar.button("Login"):
+        st.session_state['user'] = {"email": email}
+        st.success(f"✅ Logged in as {email}")
 
 # ========== Portfolio Allocation Logic ==========
 def get_portfolio_allocation(risk):
@@ -98,7 +78,7 @@ def save_to_firebase(user_email, profile, allocation, explanation, sip_info):
         "explanation": explanation,
         "sip_info": sip_info
     }
-    db.child("users").child(user_email.replace('.', '_')).push(doc_data)
+    db.collection("users").document(user_email).collection("sessions").add(doc_data)
 
 # ========== PDF Export ==========
 def generate_pdf(name, age, income, risk, goal, allocation, explanation, sip_info=None):
