@@ -1,7 +1,9 @@
 streamlit
 openai
-pyrebase4 & firebase-admin
+pyrebase4
+firebase-admin
 fpdf
 plotly
 yfinance
-pandas, numpy
+pandas
+numpy
