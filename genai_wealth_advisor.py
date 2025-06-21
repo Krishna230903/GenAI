@@ -1,15 +1,15 @@
-# GenAI Wealth Advisor Full App WITHOUT Firebase
+# GenAI Wealth Advisor Full App WITHOUT Firebase (Updated OpenAI SDK)
 
 import streamlit as st
 import plotly.express as px
-import openai
+from openai import OpenAI
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
 # ========== OpenAI API ==========
-openai.api_key = st.secrets["openai_api_key"]
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -34,14 +34,14 @@ def explain_portfolio(allocation, age, risk, goal):
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
             {"role": "user", "content": prompt}
         ]
     )
-    return response["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -143,11 +143,11 @@ if st.button("🔍 Generate Portfolio"):
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a financial advisor."},
                 {"role": "user", "content": prompt}
             ]
         )
-        st.write(response['choices'][0]['message']['content'])
+        st.write(response.choices[0].message.content)
