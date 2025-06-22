@@ -1,22 +1,23 @@
-# GenAI Wealth Advisor App with Azure OpenAI
+# GenAI Wealth Advisor App using OpenRouter.ai
 
 import streamlit as st
 import plotly.express as px
-from openai import AzureOpenAI
 import yfinance as yf
 import pandas as pd
+import requests
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
-# ========== Azure OpenAI API Setup ==========
-client = AzureOpenAI(
-    api_key=st.secrets["azure_openai_api_key"],
-    azure_endpoint=st.secrets["azure_openai_endpoint"],
-    api_version="2023-07-01-preview",
-)
-model_name = st.secrets["azure_openai_deployment"]
+# ========== OpenRouter API Setup ==========
+api_key = st.secrets["openrouter_api_key"]
+model_name = st.secrets["openrouter_model"]
+api_base = "https://openrouter.ai/api/v1"
+headers = {
+    "Authorization": f"Bearer {api_key}",
+    "Content-Type": "application/json"
+}
 
-# ========== Demo Login Simulation ==========
+# ========== Simulated Login ==========
 def login_section():
     st.sidebar.subheader("🔐 Simulated Login")
     email = st.sidebar.text_input("Enter your email")
@@ -39,14 +40,16 @@ def explain_portfolio(allocation, age, risk, goal):
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": "You are a helpful and expert financial advisor."},
+    payload = {
+        "model": model_name,
+        "messages": [
+            {"role": "system", "content": "You are a helpful financial advisor."},
             {"role": "user", "content": prompt}
         ]
-    )
-    return response.choices[0].message.content
+    }
+    response = requests.post(f"{api_base}/chat/completions", headers=headers, json=payload)
+    response_json = response.json()
+    return response_json["choices"][0]["message"]["content"]
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -60,10 +63,8 @@ def fetch_cagr(ticker, years=5):
     end = datetime.now()
     start = end - timedelta(days=years * 365)
     data = yf.download(ticker, start=start, end=end)
-    if data.empty:
-        return "❌ No data"
-    if "Adj Close" not in data.columns:
-        return "❌ 'Adj Close' not found"
+    if data.empty or "Adj Close" not in data:
+        return None
     start_price = data["Adj Close"].iloc[0]
     end_price = data["Adj Close"].iloc[-1]
     cagr = ((end_price / start_price) ** (1 / years)) - 1
@@ -135,9 +136,9 @@ if st.button("🔍 Generate Portfolio"):
 
     st.subheader("📉 Real-Time Return Estimates")
     returns = {
-        "Equity": fetch_cagr("AAPL"),
-        "Debt": fetch_cagr("BND"),
-        "Gold": fetch_cagr("GLD")
+        "Equity": fetch_cagr("^NSEI"),
+        "Debt": fetch_cagr("ICICIBANK.NS"),
+        "Gold": fetch_cagr("GOLDBEES.NS")
     }
     st.dataframe(pd.DataFrame({"Asset": returns.keys(), "CAGR (%)": returns.values()}))
 
@@ -145,16 +146,16 @@ if st.button("🔍 Generate Portfolio"):
         generate_pdf("User", age, income, risk_tolerance, goal, allocation, explanation, {"amount": goal_amount, "years": goal_years, "sip": sip})
         st.download_button("📥 Download PDF", open("/mnt/data/wealth_report.pdf", "rb"), "Wealth_Report.pdf")
 
-    # LLM Q&A
     st.subheader("💬 Ask About Your Portfolio")
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
+        payload = {
+            "model": model_name,
+            "messages": [
                 {"role": "system", "content": "You are a financial advisor."},
                 {"role": "user", "content": prompt}
             ]
-        )
-        st.write(response.choices[0].message.content)
+        }
+        response = requests.post(f"{api_base}/chat/completions", headers=headers, json=payload)
+        st.write(response.json()["choices"][0]["message"]["content"])
