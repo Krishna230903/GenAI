@@ -1,4 +1,4 @@
-# GenAI Wealth Advisor Full App WITHOUT Firebase (Updated OpenAI Legacy SDK)
+# GenAI Wealth Advisor App with OpenRouter API (GPT-4)
 
 import streamlit as st
 import plotly.express as px
@@ -8,8 +8,10 @@ import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
-# ========== OpenAI API ==========
-openai.api_key = st.secrets["openai_api_key"]
+# ========== OpenRouter API Setup ==========
+openai.api_key = st.secrets["openrouter_api_key"]
+openai.api_base = "https://openrouter.ai/api/v1"
+model_name = "openai/gpt-4"  # or use openai/gpt-3.5-turbo or anthropic/claude-3
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -35,13 +37,13 @@ def explain_portfolio(allocation, age, risk, goal):
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
             {"role": "user", "content": prompt}
         ]
     )
-    return response["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -144,10 +146,10 @@ if st.button("🔍 Generate Portfolio"):
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model=model_name,
             messages=[
                 {"role": "system", "content": "You are a financial advisor."},
                 {"role": "user", "content": prompt}
             ]
         )
-        st.write(response["choices"][0]["message"]["content"])
+        st.write(response.choices[0].message.content)
