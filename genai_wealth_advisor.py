@@ -1,13 +1,20 @@
-# GenAI Wealth Advisor App using OpenRouter API
+# GenAI Wealth Advisor App with Azure OpenAI
 
 import streamlit as st
 import plotly.express as px
+from openai import AzureOpenAI
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
-import requests
-import json
+
+# ========== Azure OpenAI API Setup ==========
+client = AzureOpenAI(
+    api_key=st.secrets["azure_openai_api_key"],
+    azure_endpoint=st.secrets["azure_openai_endpoint"],
+    api_version="2023-07-01-preview",
+)
+model_name = st.secrets["azure_openai_deployment"]
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -26,31 +33,20 @@ def get_portfolio_allocation(risk):
     else:
         return {"Equity": 70, "Debt": 20, "Gold": 10}
 
-# ========== GPT Explanation via OpenRouter ==========
+# ========== GPT Explanation ==========
 def explain_portfolio(allocation, age, risk, goal):
     prompt = f"""
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-
-    headers = {
-        "Authorization": f"Bearer {st.secrets['openrouter_api_key']}",
-        "HTTP-Referer": "https://yourdomain.com",  # replace if hosted
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "model": st.secrets["openrouter_model"],
-        "messages": [
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
             {"role": "user", "content": prompt}
         ]
-    }
-
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, data=json.dumps(data))
-    response_json = response.json()
-
-    return response_json["choices"][0]["message"]["content"]
+    )
+    return response.choices[0].message.content
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -65,7 +61,9 @@ def fetch_cagr(ticker, years=5):
     start = end - timedelta(days=years * 365)
     data = yf.download(ticker, start=start, end=end)
     if data.empty:
-        return None
+        return "❌ No data"
+    if "Adj Close" not in data.columns:
+        return "❌ 'Adj Close' not found"
     start_price = data["Adj Close"].iloc[0]
     end_price = data["Adj Close"].iloc[-1]
     cagr = ((end_price / start_price) ** (1 / years)) - 1
@@ -137,9 +135,9 @@ if st.button("🔍 Generate Portfolio"):
 
     st.subheader("📉 Real-Time Return Estimates")
     returns = {
-        "Equity": fetch_cagr("^NSEI"),
-        "Debt": fetch_cagr("ICICIBANK.NS"),
-        "Gold": fetch_cagr("GOLDBEES.NS")
+        "Equity": fetch_cagr("AAPL"),
+        "Debt": fetch_cagr("BND"),
+        "Gold": fetch_cagr("GLD")
     }
     st.dataframe(pd.DataFrame({"Asset": returns.keys(), "CAGR (%)": returns.values()}))
 
@@ -152,21 +150,11 @@ if st.button("🔍 Generate Portfolio"):
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-
-        headers = {
-            "Authorization": f"Bearer {st.secrets['openrouter_api_key']}",
-            "HTTP-Referer": "https://yourdomain.com",
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "model": st.secrets["openrouter_model"],
-            "messages": [
-                {"role": "system", "content": "You are a helpful and expert financial advisor."},
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "You are a financial advisor."},
                 {"role": "user", "content": prompt}
             ]
-        }
-
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, data=json.dumps(data))
-        response_json = response.json()
-        st.write(response_json["choices"][0]["message"]["content"])
+        )
+        st.write(response.choices[0].message.content)
