@@ -1,17 +1,19 @@
-# GenAI Wealth Advisor App with OpenRouter API (GPT-4)
+# GenAI Wealth Advisor App with OpenRouter
 
 import streamlit as st
 import plotly.express as px
-import openai
+from openai import OpenAI
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 
-# ========== OpenRouter API Setup ==========
-openai.api_key = st.secrets["openrouter_api_key"]
-openai.api_base = "https://openrouter.ai/api/v1"
-model_name = "openai/gpt-4"  # or use openai/gpt-3.5-turbo or anthropic/claude-3
+# ========== OpenRouter Client Setup ==========
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=st.secrets["openrouter_api_key"]
+)
+model_name = st.secrets["openrouter_model"]
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -36,7 +38,7 @@ def explain_portfolio(allocation, age, risk, goal):
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
@@ -145,7 +147,7 @@ if st.button("🔍 Generate Portfolio"):
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model_name,
             messages=[
                 {"role": "system", "content": "You are a financial advisor."},
