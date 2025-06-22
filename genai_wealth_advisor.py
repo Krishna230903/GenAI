@@ -1,19 +1,13 @@
-# GenAI Wealth Advisor App with OpenRouter
+# GenAI Wealth Advisor App using OpenRouter API
 
 import streamlit as st
 import plotly.express as px
-from openai import OpenAI
 import yfinance as yf
 import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
-
-# ========== OpenRouter Client Setup ==========
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=st.secrets["openrouter_api_key"]
-)
-model_name = st.secrets["openrouter_model"]
+import requests
+import json
 
 # ========== Demo Login Simulation ==========
 def login_section():
@@ -32,20 +26,31 @@ def get_portfolio_allocation(risk):
     else:
         return {"Equity": 70, "Debt": 20, "Gold": 10}
 
-# ========== GPT Explanation ==========
+# ========== GPT Explanation via OpenRouter ==========
 def explain_portfolio(allocation, age, risk, goal):
     prompt = f"""
     Act like a professional financial advisor. Explain this portfolio allocation for a {age}-year-old user with {risk} risk tolerance and goal: {goal}.
     The allocation is: Equity: {allocation['Equity']}%, Debt: {allocation['Debt']}%, Gold: {allocation['Gold']}%.
     """
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
+
+    headers = {
+        "Authorization": f"Bearer {st.secrets['openrouter_api_key']}",
+        "HTTP-Referer": "https://yourdomain.com",  # replace if hosted
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": st.secrets["openrouter_model"],
+        "messages": [
             {"role": "system", "content": "You are a helpful and expert financial advisor."},
             {"role": "user", "content": prompt}
         ]
-    )
-    return response.choices[0].message.content
+    }
+
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, data=json.dumps(data))
+    response_json = response.json()
+
+    return response_json["choices"][0]["message"]["content"]
 
 # ========== SIP Calculator ==========
 def calculate_sip(goal_amount, years, annual_return):
@@ -147,11 +152,21 @@ if st.button("🔍 Generate Portfolio"):
     user_question = st.text_input("Type your question")
     if st.button("Ask GPT"):
         prompt = f"The user has a portfolio: {allocation}, age {age}, goal: {goal}. Question: {user_question}"
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": "You are a financial advisor."},
+
+        headers = {
+            "Authorization": f"Bearer {st.secrets['openrouter_api_key']}",
+            "HTTP-Referer": "https://yourdomain.com",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": st.secrets["openrouter_model"],
+            "messages": [
+                {"role": "system", "content": "You are a helpful and expert financial advisor."},
                 {"role": "user", "content": prompt}
             ]
-        )
-        st.write(response.choices[0].message.content)
+        }
+
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, data=json.dumps(data))
+        response_json = response.json()
+        st.write(response_json["choices"][0]["message"]["content"])
